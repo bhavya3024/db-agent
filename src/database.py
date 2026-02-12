@@ -10,6 +10,7 @@ from enum import Enum
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker
 from pymongo import MongoClient
 from pymongo.database import Database as MongoDatabase
@@ -104,9 +105,22 @@ class SQLDatabaseConnection(BaseDatabaseConnection):
     def engine(self) -> Engine:
         """Get or create the database engine."""
         if self._engine is None:
-            connection_string = self.config.get_connection_string()
+            # Use URL builder for proper encoding of special characters
+            if self.config.db_type == DatabaseType.POSTGRES:
+                url = URL.create(
+                    drivername="postgresql+psycopg2",
+                    username=self.config.user,
+                    password=self.config.password,
+                    host=self.config.host,
+                    port=self.config.port,
+                    database=self.config.database,
+                    query={"sslmode": self.config.sslmode} if self.config.sslmode else {}
+                )
+            else:
+                url = self.config.get_connection_string()
+            
             self._engine = create_engine(
-                connection_string,
+                url,
                 pool_pre_ping=True,
                 pool_size=5,
                 max_overflow=10
