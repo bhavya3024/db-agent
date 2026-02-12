@@ -35,11 +35,15 @@ class DatabaseConfig:
     password: str = ""
     database: str = ""
     schema: str = "public"
+    sslmode: str = ""
     
     def get_connection_string(self) -> str:
         """Generate connection string based on database type."""
         if self.db_type == DatabaseType.POSTGRES:
-            return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+            conn_str = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+            if self.sslmode:
+                conn_str += f"?sslmode={self.sslmode}"
+            return conn_str
         elif self.db_type == DatabaseType.MYSQL:
             return f"mysql+pymysql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
         elif self.db_type == DatabaseType.SQLITE:
@@ -485,7 +489,8 @@ def get_postgres_config_from_env() -> DatabaseConfig:
         user=os.getenv("POSTGRES_USER", "postgres"),
         password=os.getenv("POSTGRES_PASSWORD", ""),
         database=os.getenv("POSTGRES_DB", "postgres"),
-        schema=os.getenv("POSTGRES_SCHEMA", "public")
+        schema=os.getenv("POSTGRES_SCHEMA", "public"),
+        sslmode=os.getenv("POSTGRES_SSLMODE", "")
     )
 
 

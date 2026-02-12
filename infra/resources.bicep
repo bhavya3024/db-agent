@@ -201,6 +201,9 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
     highAvailability: {
       mode: 'Disabled'
     }
+    network: {
+      publicNetworkAccess: 'Enabled'
+    }
   }
 }
 
@@ -393,6 +396,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'POSTGRES_SCHEMA'
               value: postgresSchema
+            }
+            {
+              name: 'POSTGRES_SSLMODE'
+              value: 'require'
             }
             {
               name: 'MONGODB_CONNECTION_STRING'
