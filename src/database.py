@@ -51,7 +51,14 @@ class DatabaseConfig:
             return f"sqlite:///{self.database}"
         elif self.db_type == DatabaseType.MONGODB:
             if self.user and self.password:
-                return f"mongodb://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+                from urllib.parse import quote_plus
+                # URL encode password to handle special characters
+                encoded_password = quote_plus(self.password)
+                base_url = f"mongodb://{self.user}:{encoded_password}@{self.host}:{self.port}/{self.database}"
+                # Add SSL and Cosmos DB required parameters
+                if self.sslmode == 'require' or self.port == 10255:  # Cosmos DB uses port 10255
+                    base_url += "?ssl=true&retrywrites=false&maxIdleTimeMS=120000"
+                return base_url
             return f"mongodb://{self.host}:{self.port}/{self.database}"
         else:
             raise ValueError(f"Unsupported database type: {self.db_type}")
@@ -516,7 +523,8 @@ def get_mongodb_config_from_env() -> DatabaseConfig:
         port=int(os.getenv("MONGODB_PORT", "27017")),
         user=os.getenv("MONGODB_USERNAME", ""),
         password=os.getenv("MONGODB_PASSWORD", ""),
-        database=os.getenv("MONGODB_DATABASE", "test")
+        database=os.getenv("MONGODB_DATABASE", "test"),
+        sslmode=os.getenv("MONGODB_SSLMODE", "")
     )
 
 
