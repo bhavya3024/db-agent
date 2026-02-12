@@ -22,15 +22,40 @@ param langChainApiKey string
 @description('LangChain Project Name')
 param langChainProject string
 
-@description('PostgreSQL admin username')
-param postgresAdminUsername string
+@description('PostgreSQL username')
+param postgresUser string
 
 @secure()
-@description('PostgreSQL admin password')
-param postgresAdminPassword string
+@description('PostgreSQL password')
+param postgresPassword string
+
+@description('PostgreSQL host')
+param postgresHost string
+
+@description('PostgreSQL port')
+param postgresPort string
+
+@description('PostgreSQL database name')
+param postgresDb string
+
+@description('PostgreSQL schema')
+param postgresSchema string
+
+@description('MongoDB username')
+param mongoDbUsername string
+
+@secure()
+@description('MongoDB password')
+param mongoDbPassword string
+
+@description('MongoDB host')
+param mongoDbHost string
+
+@description('MongoDB port')
+param mongoDbPort string
 
 @description('MongoDB database name')
-param mongoDbDatabaseName string
+param mongoDbDatabase string
 
 // ============================================================================
 // User Assigned Managed Identity
@@ -121,7 +146,7 @@ resource postgresPasswordSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' =
   parent: keyVault
   name: 'postgres-password'
   properties: {
-    value: postgresAdminPassword
+    value: postgresPassword
   }
 }
 
@@ -164,8 +189,8 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
   }
   properties: {
     version: '16'
-    administratorLogin: postgresAdminUsername
-    administratorLoginPassword: postgresAdminPassword
+    administratorLogin: postgresUser
+    administratorLoginPassword: postgresPassword
     storage: {
       storageSizeGB: 32
     }
@@ -236,10 +261,10 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
 // Cosmos DB MongoDB database
 resource cosmosMongoDb 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2024-05-15' = {
   parent: cosmosDbAccount
-  name: mongoDbDatabaseName
+  name: mongoDbDatabase
   properties: {
     resource: {
-      id: mongoDbDatabaseName
+      id: mongoDbDatabase
     }
   }
 }
@@ -347,7 +372,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'POSTGRES_USER'
-              value: postgresAdminUsername
+              value: postgresUser
             }
             {
               name: 'POSTGRES_PASSWORD'
@@ -363,11 +388,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'POSTGRES_DB'
-              value: 'dvd'
+              value: postgresDb
             }
             {
               name: 'POSTGRES_SCHEMA'
-              value: 'public'
+              value: postgresSchema
             }
             {
               name: 'MONGODB_CONNECTION_STRING'
@@ -375,7 +400,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'MONGODB_DATABASE'
-              value: mongoDbDatabaseName
+              value: mongoDbDatabase
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -413,7 +438,7 @@ output containerRegistryEndpoint string = containerRegistry.properties.loginServ
 output containerRegistryName string = containerRegistry.name
 output keyVaultName string = keyVault.name
 output postgresHost string = postgresServer.properties.fullyQualifiedDomainName
-output cosmosDbConnectionString string = 'mongodb://${cosmosDbAccount.name}.mongo.cosmos.azure.com:10255/${mongoDbDatabaseName}?ssl=true&replicaSet=globaldb'
+output cosmosDbConnectionString string = 'mongodb://${cosmosDbAccount.name}.mongo.cosmos.azure.com:10255/${mongoDbDatabase}?ssl=true&replicaSet=globaldb'
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output managedIdentityId string = managedIdentity.id
 output managedIdentityClientId string = managedIdentity.properties.clientId

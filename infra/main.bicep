@@ -23,15 +23,40 @@ param langChainApiKey string
 @description('LangChain Project Name')
 param langChainProject string = 'db-agent'
 
-@description('PostgreSQL admin username')
-param postgresAdminUsername string = 'pgadmin'
+@description('PostgreSQL username')
+param postgresUser string = 'postgres'
 
 @secure()
-@description('PostgreSQL admin password')
-param postgresAdminPassword string
+@description('PostgreSQL password')
+param postgresPassword string
+
+@description('PostgreSQL host')
+param postgresHost string = ''
+
+@description('PostgreSQL port')
+param postgresPort string = '5432'
+
+@description('PostgreSQL database name')
+param postgresDb string
+
+@description('PostgreSQL schema')
+param postgresSchema string = 'public'
+
+@description('MongoDB username')
+param mongoDbUsername string = ''
+
+@secure()
+@description('MongoDB password')
+param mongoDbPassword string = ''
+
+@description('MongoDB host')
+param mongoDbHost string = ''
+
+@description('MongoDB port')
+param mongoDbPort string = '27017'
 
 @description('MongoDB database name')
-param mongoDbDatabaseName string = 'sample_training'
+param mongoDbDatabase string
 
 // Resource token for unique naming
 var resourceToken = uniqueString(subscription().id, location, environmentName)
@@ -60,9 +85,17 @@ module resources 'resources.bicep' = {
     openAiApiKey: openAiApiKey
     langChainApiKey: langChainApiKey
     langChainProject: langChainProject
-    postgresAdminUsername: postgresAdminUsername
-    postgresAdminPassword: postgresAdminPassword
-    mongoDbDatabaseName: mongoDbDatabaseName
+    postgresUser: postgresUser
+    postgresPassword: postgresPassword
+    postgresHost: postgresHost
+    postgresPort: postgresPort
+    postgresDb: postgresDb
+    postgresSchema: postgresSchema
+    mongoDbUsername: mongoDbUsername
+    mongoDbPassword: mongoDbPassword
+    mongoDbHost: mongoDbHost
+    mongoDbPort: mongoDbPort
+    mongoDbDatabase: mongoDbDatabase
   }
 }
 

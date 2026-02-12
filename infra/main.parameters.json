@@ -20,14 +20,38 @@
     "langChainProject": {
       "value": "${LANGCHAIN_PROJECT=db-agent}"
     },
-    "postgresAdminUsername": {
-      "value": "${POSTGRES_ADMIN_USERNAME=pgadmin}"
+    "postgresUser": {
+      "value": "${POSTGRES_USER=postgres}"
     },
-    "postgresAdminPassword": {
-      "value": "${POSTGRES_ADMIN_PASSWORD}"
+    "postgresPassword": {
+      "value": "${POSTGRES_PASSWORD}"
     },
-    "mongoDbDatabaseName": {
-      "value": "${MONGODB_DATABASE=sample_training}"
+    "postgresHost": {
+      "value": "${POSTGRES_HOST}"
+    },
+    "postgresPort": {
+      "value": "${POSTGRES_PORT=5432}"
+    },
+    "postgresDb": {
+      "value": "${POSTGRES_DB}"
+    },
+    "postgresSchema": {
+      "value": "${POSTGRES_SCHEMA=public}"
+    },
+    "mongoDbHost": {
+      "value": "${MONGODB_HOST}"
+    },
+    "mongoDbPort": {
+      "value": "${MONGODB_PORT=27017}"
+    },
+    "mongoDbUsername": {
+      "value": "${MONGODB_USERNAME}"
+    },
+    "mongoDbPassword": {
+      "value": "${MONGODB_PASSWORD}"
+    },
+    "mongoDbDatabase": {
+      "value": "${MONGODB_DATABASE}"
     }
   }
 }
