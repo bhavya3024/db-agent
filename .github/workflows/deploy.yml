@@ -48,6 +48,32 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Cancel Active Deployments
+        run: |
+          # Cancel any active deployments in the resource group
+          RG_NAME="rg-${{ secrets.AZURE_ENV_NAME }}"
+          echo "Checking for active deployments in $RG_NAME..."
+          
+          # Check if resource group exists
+          if az group exists --name $RG_NAME | grep -q true; then
+            # Get running deployments
+            DEPLOYMENTS=$(az deployment group list --resource-group $RG_NAME --query "[?properties.provisioningState=='Running'].name" -o tsv 2>/dev/null || echo "")
+            
+            if [ -n "$DEPLOYMENTS" ]; then
+              echo "Found active deployments, canceling..."
+              for DEPLOYMENT in $DEPLOYMENTS; do
+                echo "Canceling deployment: $DEPLOYMENT"
+                az deployment group cancel --resource-group $RG_NAME --name $DEPLOYMENT || true
+              done
+              echo "Waiting 30 seconds for cancellation to complete..."
+              sleep 30
+            else
+              echo "No active deployments found"
+            fi
+          else
+            echo "Resource group $RG_NAME does not exist yet"
+          fi
+
       - name: Provision Infrastructure
         run: azd provision --no-prompt
 
