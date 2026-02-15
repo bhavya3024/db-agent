@@ -41,5 +41,33 @@ jobs:
             --tenant-id "${{ secrets.AZURE_TENANT_ID }}"
         shell: pwsh
 
-      - name: Provision and Deploy
+      - name: Log in to Azure CLI
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision Infrastructure (without Container App)
+        run: |
+          azd provision --no-prompt
+        continue-on-error: true
+
+      - name: Get ACR Name
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list --resource-group rg-${{ secrets.AZURE_ENV_NAME }} --query "[0].name" -o tsv)
+          echo "name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "ACR Name: $ACR_NAME"
+
+      - name: Log in to ACR
+        run: |
+          az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ steps.acr.outputs.name }}.azurecr.io/db-agent:latest .
+          docker push ${{ steps.acr.outputs.name }}.azurecr.io/db-agent:latest
+
+      - name: Deploy with azd
         run: azd up --no-prompt
