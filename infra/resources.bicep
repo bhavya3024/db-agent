@@ -195,7 +195,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'db-agent'
-          image: '${containerRegistry.properties.loginServer}/db-agent:latest'
+          // Use placeholder image for initial deployment, azd deploy will update it
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
