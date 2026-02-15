@@ -58,6 +58,13 @@ param mongoDbPort string = '27017'
 @description('MongoDB database name')
 param mongoDbDatabase string
 
+@secure()
+@description('Connection Store MongoDB URI (shared with NextJS UI)')
+param connectionStoreMongoDbUri string = ''
+
+@description('Connection Store database name')
+param connectionStoreDbName string = 'db-agent'
+
 // Resource token for unique naming
 var resourceToken = uniqueString(subscription().id, location, environmentName)
 
@@ -96,6 +103,8 @@ module resources 'resources.bicep' = {
     mongoDbHost: mongoDbHost
     mongoDbPort: mongoDbPort
     mongoDbDatabase: mongoDbDatabase
+    connectionStoreMongoDbUri: connectionStoreMongoDbUri
+    connectionStoreDbName: connectionStoreDbName
   }
 }
 

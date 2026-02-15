@@ -23,6 +23,9 @@ jobs:
       LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+      # Connection Store (shared MongoDB with NextJS UI)
+      CONNECTION_STORE_MONGODB_URI: ${{ secrets.CONNECTION_STORE_MONGODB_URI }}
+      CONNECTION_STORE_DB_NAME: ${{ secrets.CONNECTION_STORE_DB_NAME }}
       # App config
       LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}

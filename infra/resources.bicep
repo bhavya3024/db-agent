@@ -57,6 +57,13 @@ param mongoDbPort string
 @description('MongoDB database name')
 param mongoDbDatabase string
 
+@secure()
+@description('Connection Store MongoDB URI (shared with NextJS UI)')
+param connectionStoreMongoDbUri string
+
+@description('Connection Store database name')
+param connectionStoreDbName string
+
 // ============================================================================
 // User Assigned Managed Identity
 // ============================================================================
@@ -345,6 +352,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'mongodb-connection-string'
           value: cosmosDbAccount.listConnectionStrings().connectionStrings[0].connectionString
         }
+        {
+          name: 'connection-store-mongodb-uri'
+          value: connectionStoreMongoDbUri
+        }
       ]
     }
     template: {
@@ -408,6 +419,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'MONGODB_DATABASE'
               value: mongoDbDatabase
+            }
+            {
+              name: 'CONNECTION_STORE_MONGODB_URI'
+              secretRef: 'connection-store-mongodb-uri'
+            }
+            {
+              name: 'CONNECTION_STORE_DB_NAME'
+              value: connectionStoreDbName
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'

@@ -52,6 +52,12 @@
     },
     "mongoDbDatabase": {
       "value": "${MONGODB_DATABASE}"
+    },
+    "connectionStoreMongoDbUri": {
+      "value": "${CONNECTION_STORE_MONGODB_URI}"
+    },
+    "connectionStoreDbName": {
+      "value": "${CONNECTION_STORE_DB_NAME=db-agent}"
     }
   }
 }
