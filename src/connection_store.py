@@ -32,16 +32,18 @@ class ConnectionStore:
         
         if not mongodb_uri:
             print("⚠ CONNECTION_STORE_MONGODB_URI not set, connection store disabled")
+            print(f"  Available env vars: {[k for k in os.environ.keys() if 'MONGO' in k or 'CONNECTION' in k]}")
             return
         
         try:
-            self._client = MongoClient(mongodb_uri)
+            print(f"Connecting to connection store... (URI length: {len(mongodb_uri)})")
+            self._client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
             # Extract database name from URI or use default
-            db_name = os.getenv("CONNECTION_STORE_DB_NAME", "dbagent")
+            db_name = os.getenv("CONNECTION_STORE_DB_NAME", "db-agent")
             self._db = self._client[db_name]
             # Test connection
             self._client.admin.command('ping')
-            print("✓ Connection store (MongoDB) connected")
+            print(f"✓ Connection store (MongoDB) connected to database: {db_name}")
         except Exception as e:
             print(f"✗ Failed to connect to connection store: {e}")
             self._client = None
@@ -58,7 +60,7 @@ class ConnectionStore:
             Connection details dict or None if not found/unauthorized
         """
         if not self._db:
-            print("Connection store not available")
+            print(f"Connection store not available - cannot fetch connection {connection_id}")
             return None
         
         try:
@@ -67,6 +69,8 @@ class ConnectionStore:
                 print(f"Invalid connection_id format: {connection_id}")
                 return None
             
+            print(f"Looking for connection: {connection_id} with userId: {user_id}")
+            
             # Find connection with user verification
             connection = self._db.databaseconnections.find_one({
                 "_id": ObjectId(connection_id),
@@ -74,8 +78,17 @@ class ConnectionStore:
             })
             
             if not connection:
-                print(f"Connection not found or unauthorized: {connection_id}")
+                # Debug: check if connection exists at all
+                any_conn = self._db.databaseconnections.find_one({"_id": ObjectId(connection_id)})
+                if any_conn:
+                    print(f"Connection exists but userId mismatch. Expected: {user_id}, Got: {any_conn.get('userId')}")
+                else:
+                    print(f"Connection {connection_id} not found in database")
+                    # List all collections for debugging
+                    print(f"Available collections: {self._db.list_collection_names()}")
                 return None
+            
+            print(f"Found connection: {connection.get('name')} ({connection.get('type')})")
             
             # Convert ObjectId to string
             connection["_id"] = str(connection["_id"])
@@ -84,6 +97,8 @@ class ConnectionStore:
             
         except Exception as e:
             print(f"Error fetching connection: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def build_connection_string(self, connection: Dict[str, Any]) -> Optional[str]:
