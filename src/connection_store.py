@@ -37,7 +37,16 @@ class ConnectionStore:
         
         try:
             print(f"Connecting to connection store... (URI length: {len(mongodb_uri)})")
-            self._client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
+            
+            # Add TLS settings for MongoDB Atlas compatibility
+            import ssl
+            self._client = MongoClient(
+                mongodb_uri, 
+                serverSelectionTimeoutMS=5000,
+                tls=True,
+                tlsAllowInvalidCertificates=True,  # For development - remove in production
+            )
+            
             # Extract database name from URI or use default
             db_name = os.getenv("CONNECTION_STORE_DB_NAME", "db-agent")
             self._db = self._client[db_name]
