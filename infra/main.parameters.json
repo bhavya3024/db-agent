@@ -20,39 +20,6 @@
     "langChainProject": {
       "value": "${LANGCHAIN_PROJECT=db-agent}"
     },
-    "postgresUser": {
-      "value": "${POSTGRES_USER=postgres}"
-    },
-    "postgresPassword": {
-      "value": "${POSTGRES_PASSWORD}"
-    },
-    "postgresHost": {
-      "value": "${POSTGRES_HOST}"
-    },
-    "postgresPort": {
-      "value": "${POSTGRES_PORT=5432}"
-    },
-    "postgresDb": {
-      "value": "${POSTGRES_DB}"
-    },
-    "postgresSchema": {
-      "value": "${POSTGRES_SCHEMA=public}"
-    },
-    "mongoDbHost": {
-      "value": "${MONGODB_HOST}"
-    },
-    "mongoDbPort": {
-      "value": "${MONGODB_PORT=27017}"
-    },
-    "mongoDbUsername": {
-      "value": "${MONGODB_USERNAME}"
-    },
-    "mongoDbPassword": {
-      "value": "${MONGODB_PASSWORD}"
-    },
-    "mongoDbDatabase": {
-      "value": "${MONGODB_DATABASE}"
-    },
     "connectionStoreMongoDbUri": {
       "value": "${CONNECTION_STORE_MONGODB_URI}"
     },

@@ -23,44 +23,9 @@ param langChainApiKey string
 @description('LangChain Project Name')
 param langChainProject string = 'db-agent'
 
-@description('PostgreSQL username')
-param postgresUser string = 'postgres'
-
-@secure()
-@description('PostgreSQL password')
-param postgresPassword string
-
-@description('PostgreSQL host')
-param postgresHost string = ''
-
-@description('PostgreSQL port')
-param postgresPort string = '5432'
-
-@description('PostgreSQL database name')
-param postgresDb string
-
-@description('PostgreSQL schema')
-param postgresSchema string = 'public'
-
-@description('MongoDB username')
-param mongoDbUsername string = ''
-
-@secure()
-@description('MongoDB password')
-param mongoDbPassword string = ''
-
-@description('MongoDB host')
-param mongoDbHost string = ''
-
-@description('MongoDB port')
-param mongoDbPort string = '27017'
-
-@description('MongoDB database name')
-param mongoDbDatabase string
-
 @secure()
 @description('Connection Store MongoDB URI (shared with NextJS UI)')
-param connectionStoreMongoDbUri string = ''
+param connectionStoreMongoDbUri string
 
 @description('Connection Store database name')
 param connectionStoreDbName string = 'db-agent'
@@ -92,17 +57,6 @@ module resources 'resources.bicep' = {
     openAiApiKey: openAiApiKey
     langChainApiKey: langChainApiKey
     langChainProject: langChainProject
-    postgresUser: postgresUser
-    postgresPassword: postgresPassword
-    postgresHost: postgresHost
-    postgresPort: postgresPort
-    postgresDb: postgresDb
-    postgresSchema: postgresSchema
-    mongoDbUsername: mongoDbUsername
-    mongoDbPassword: mongoDbPassword
-    mongoDbHost: mongoDbHost
-    mongoDbPort: mongoDbPort
-    mongoDbDatabase: mongoDbDatabase
     connectionStoreMongoDbUri: connectionStoreMongoDbUri
     connectionStoreDbName: connectionStoreDbName
   }
@@ -113,6 +67,4 @@ output RESOURCE_GROUP_ID string = rg.id
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryEndpoint
 output AZURE_CONTAINER_REGISTRY_NAME string = resources.outputs.containerRegistryName
 output AZURE_KEY_VAULT_NAME string = resources.outputs.keyVaultName
-output POSTGRES_HOST string = resources.outputs.postgresHost
-output COSMOS_DB_CONNECTION_STRING string = resources.outputs.cosmosDbConnectionString
 output CONTAINER_APP_URL string = resources.outputs.containerAppUrl

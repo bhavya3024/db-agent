@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14203538030941345045"
+      "templateHash": "3782661214201982665"
     }
   },
   "parameters": {
@@ -50,24 +50,17 @@
         "description": "LangChain Project Name"
       }
     },
-    "postgresAdminUsername": {
-      "type": "string",
-      "defaultValue": "pgadmin",
-      "metadata": {
-        "description": "PostgreSQL admin username"
-      }
-    },
-    "postgresAdminPassword": {
+    "connectionStoreMongoDbUri": {
       "type": "securestring",
       "metadata": {
-        "description": "PostgreSQL admin password"
+        "description": "Connection Store MongoDB URI (shared with NextJS UI)"
       }
     },
-    "mongoDbDatabaseName": {
+    "connectionStoreDbName": {
       "type": "string",
-      "defaultValue": "sample_training",
+      "defaultValue": "db-agent",
       "metadata": {
-        "description": "MongoDB database name"
+        "description": "Connection Store database name"
       }
     }
   },
@@ -117,14 +110,11 @@
           "langChainProject": {
             "value": "[parameters('langChainProject')]"
           },
-          "postgresAdminUsername": {
-            "value": "[parameters('postgresAdminUsername')]"
+          "connectionStoreMongoDbUri": {
+            "value": "[parameters('connectionStoreMongoDbUri')]"
           },
-          "postgresAdminPassword": {
-            "value": "[parameters('postgresAdminPassword')]"
-          },
-          "mongoDbDatabaseName": {
-            "value": "[parameters('mongoDbDatabaseName')]"
+          "connectionStoreDbName": {
+            "value": "[parameters('connectionStoreDbName')]"
           }
         },
         "template": {
@@ -134,7 +124,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "16463540616476924903"
+              "templateHash": "12875913175946037545"
             }
           },
           "parameters": {
@@ -180,22 +170,16 @@
                 "description": "LangChain Project Name"
               }
             },
-            "postgresAdminUsername": {
-              "type": "string",
-              "metadata": {
-                "description": "PostgreSQL admin username"
-              }
-            },
-            "postgresAdminPassword": {
+            "connectionStoreMongoDbUri": {
               "type": "securestring",
               "metadata": {
-                "description": "PostgreSQL admin password"
+                "description": "Connection Store MongoDB URI (shared with NextJS UI)"
               }
             },
-            "mongoDbDatabaseName": {
+            "connectionStoreDbName": {
               "type": "string",
               "metadata": {
-                "description": "MongoDB database name"
+                "description": "Connection Store database name"
               }
             }
           },
@@ -256,48 +240,15 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[format('Microsoft.KeyVault/vaults/{0}', format('azkv{0}', parameters('resourceToken')))]",
-              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken'))), '4633458b-17de-408a-b874-0445c86b69e6')]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken'))), 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken'))), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken')))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', format('azkv{0}', parameters('resourceToken')), 'openai-api-key')]",
-              "properties": {
-                "value": "[parameters('openAiApiKey')]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', format('azkv{0}', parameters('resourceToken')), 'langchain-api-key')]",
-              "properties": {
-                "value": "[parameters('langChainApiKey')]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', format('azkv{0}', parameters('resourceToken')), 'postgres-password')]",
-              "properties": {
-                "value": "[parameters('postgresAdminPassword')]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken')))]"
               ]
             },
             {
@@ -310,7 +261,7 @@
                 "name": "Basic"
               },
               "properties": {
-                "adminUserEnabled": false
+                "adminUserEnabled": true
               }
             },
             {
@@ -326,101 +277,6 @@
               "dependsOn": [
                 "[resourceId('Microsoft.ContainerRegistry/registries', format('azacr{0}', parameters('resourceToken')))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-              "apiVersion": "2023-12-01-preview",
-              "name": "[format('azpg{0}', parameters('resourceToken'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "sku": {
-                "name": "Standard_B1ms",
-                "tier": "Burstable"
-              },
-              "properties": {
-                "version": "16",
-                "administratorLogin": "[parameters('postgresAdminUsername')]",
-                "administratorLoginPassword": "[parameters('postgresAdminPassword')]",
-                "storage": {
-                  "storageSizeGB": 32
-                },
-                "backup": {
-                  "backupRetentionDays": 7,
-                  "geoRedundantBackup": "Disabled"
-                },
-                "highAvailability": {
-                  "mode": "Disabled"
-                }
-              }
-            },
-            {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
-              "apiVersion": "2023-12-01-preview",
-              "name": "[format('{0}/{1}', format('azpg{0}', parameters('resourceToken')), 'dvd')]",
-              "properties": {
-                "charset": "UTF8",
-                "collation": "en_US.utf8"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('azpg{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
-              "apiVersion": "2023-12-01-preview",
-              "name": "[format('{0}/{1}', format('azpg{0}', parameters('resourceToken')), 'AllowAzureServices')]",
-              "properties": {
-                "startIpAddress": "0.0.0.0",
-                "endIpAddress": "0.0.0.0"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('azpg{0}', parameters('resourceToken')))]"
-              ]
-            },
-            {
-              "type": "Microsoft.DocumentDB/databaseAccounts",
-              "apiVersion": "2024-05-15",
-              "name": "[format('azcosmos{0}', parameters('resourceToken'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "kind": "MongoDB",
-              "properties": {
-                "databaseAccountOfferType": "Standard",
-                "apiProperties": {
-                  "serverVersion": "4.2"
-                },
-                "capabilities": [
-                  {
-                    "name": "EnableMongo"
-                  },
-                  {
-                    "name": "EnableServerless"
-                  }
-                ],
-                "locations": [
-                  {
-                    "locationName": "[parameters('location')]",
-                    "failoverPriority": 0,
-                    "isZoneRedundant": false
-                  }
-                ],
-                "consistencyPolicy": {
-                  "defaultConsistencyLevel": "Session"
-                }
-              }
-            },
-            {
-              "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
-              "apiVersion": "2024-05-15",
-              "name": "[format('{0}/{1}', format('azcosmos{0}', parameters('resourceToken')), parameters('mongoDbDatabaseName'))]",
-              "properties": {
-                "resource": {
-                  "id": "[parameters('mongoDbDatabaseName')]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('azcosmos{0}', parameters('resourceToken')))]"
               ]
             },
             {
@@ -487,22 +343,15 @@
                   "secrets": [
                     {
                       "name": "openai-api-key",
-                      "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'openai-api-key'), '2023-07-01').secretUri]",
-                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
+                      "value": "[parameters('openAiApiKey')]"
                     },
                     {
                       "name": "langchain-api-key",
-                      "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'langchain-api-key'), '2023-07-01').secretUri]",
-                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
+                      "value": "[parameters('langChainApiKey')]"
                     },
                     {
-                      "name": "postgres-password",
-                      "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'postgres-password'), '2023-07-01').secretUri]",
-                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
-                    },
-                    {
-                      "name": "mongodb-connection-string",
-                      "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', format('azcosmos{0}', parameters('resourceToken'))), '2024-05-15').connectionStrings[0].connectionString]"
+                      "name": "connection-store-mongodb-uri",
+                      "value": "[parameters('connectionStoreMongoDbUri')]"
                     }
                   ]
                 },
@@ -510,7 +359,7 @@
                   "containers": [
                     {
                       "name": "db-agent",
-                      "image": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+                      "image": "[format('{0}/db-agent:latest', reference(resourceId('Microsoft.ContainerRegistry/registries', format('azacr{0}', parameters('resourceToken'))), '2023-11-01-preview').loginServer)]",
                       "resources": {
                         "cpu": "[json('0.5')]",
                         "memory": "1Gi"
@@ -533,36 +382,12 @@
                           "value": "[parameters('langChainProject')]"
                         },
                         {
-                          "name": "POSTGRES_USER",
-                          "value": "[parameters('postgresAdminUsername')]"
+                          "name": "CONNECTION_STORE_MONGODB_URI",
+                          "secretRef": "connection-store-mongodb-uri"
                         },
                         {
-                          "name": "POSTGRES_PASSWORD",
-                          "secretRef": "postgres-password"
-                        },
-                        {
-                          "name": "POSTGRES_HOST",
-                          "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('azpg{0}', parameters('resourceToken'))), '2023-12-01-preview').fullyQualifiedDomainName]"
-                        },
-                        {
-                          "name": "POSTGRES_PORT",
-                          "value": "5432"
-                        },
-                        {
-                          "name": "POSTGRES_DB",
-                          "value": "dvd"
-                        },
-                        {
-                          "name": "POSTGRES_SCHEMA",
-                          "value": "public"
-                        },
-                        {
-                          "name": "MONGODB_CONNECTION_STRING",
-                          "secretRef": "mongodb-connection-string"
-                        },
-                        {
-                          "name": "MONGODB_DATABASE",
-                          "value": "[parameters('mongoDbDatabaseName')]"
+                          "name": "CONNECTION_STORE_DB_NAME",
+                          "value": "[parameters('connectionStoreDbName')]"
                         },
                         {
                           "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
@@ -592,13 +417,8 @@
                 "[resourceId('Microsoft.Insights/components', format('azai{0}', parameters('resourceToken')))]",
                 "[resourceId('Microsoft.App/managedEnvironments', format('azenv{0}', parameters('resourceToken')))]",
                 "[resourceId('Microsoft.ContainerRegistry/registries', format('azacr{0}', parameters('resourceToken')))]",
-                "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('azcosmos{0}', parameters('resourceToken')))]",
-                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken'))), '4633458b-17de-408a-b874-0445c86b69e6'))]",
-                "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'langchain-api-key')]",
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]",
-                "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'openai-api-key')]",
-                "[resourceId('Microsoft.KeyVault/vaults/secrets', format('azkv{0}', parameters('resourceToken')), 'postgres-password')]",
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('azpg{0}', parameters('resourceToken')))]"
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', format('azkv{0}', parameters('resourceToken'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken'))), 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('azid{0}', parameters('resourceToken')))]"
               ]
             }
           ],
@@ -614,14 +434,6 @@
             "keyVaultName": {
               "type": "string",
               "value": "[format('azkv{0}', parameters('resourceToken'))]"
-            },
-            "postgresHost": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', format('azpg{0}', parameters('resourceToken'))), '2023-12-01-preview').fullyQualifiedDomainName]"
-            },
-            "cosmosDbConnectionString": {
-              "type": "string",
-              "value": "[format('mongodb://{0}.mongo.cosmos.azure.com:10255/{1}?ssl=true&replicaSet=globaldb', format('azcosmos{0}', parameters('resourceToken')), parameters('mongoDbDatabaseName'))]"
             },
             "containerAppUrl": {
               "type": "string",
@@ -659,14 +471,6 @@
     "AZURE_KEY_VAULT_NAME": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'resources-deployment'), '2025-04-01').outputs.keyVaultName.value]"
-    },
-    "POSTGRES_HOST": {
-      "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'resources-deployment'), '2025-04-01').outputs.postgresHost.value]"
-    },
-    "COSMOS_DB_CONNECTION_STRING": {
-      "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'resources-deployment'), '2025-04-01').outputs.cosmosDbConnectionString.value]"
     },
     "CONTAINER_APP_URL": {
       "type": "string",

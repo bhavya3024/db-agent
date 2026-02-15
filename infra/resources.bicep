@@ -22,41 +22,6 @@ param langChainApiKey string
 @description('LangChain Project Name')
 param langChainProject string
 
-@description('PostgreSQL username')
-param postgresUser string
-
-@secure()
-@description('PostgreSQL password')
-param postgresPassword string
-
-@description('PostgreSQL host')
-param postgresHost string
-
-@description('PostgreSQL port')
-param postgresPort string
-
-@description('PostgreSQL database name')
-param postgresDb string
-
-@description('PostgreSQL schema')
-param postgresSchema string
-
-@description('MongoDB username')
-param mongoDbUsername string
-
-@secure()
-@description('MongoDB password')
-param mongoDbPassword string
-
-@description('MongoDB host')
-param mongoDbHost string
-
-@description('MongoDB port')
-param mongoDbPort string
-
-@description('MongoDB database name')
-param mongoDbDatabase string
-
 @secure()
 @description('Connection Store MongoDB URI (shared with NextJS UI)')
 param connectionStoreMongoDbUri string
@@ -123,37 +88,12 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 
 // Key Vault Secrets Officer role for managed identity
 resource kvSecretsOfficerRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, managedIdentity.id, '4633458b-17de-408a-b874-0445c86b69e6')
   scope: keyVault
+  name: guid(keyVault.id, managedIdentity.id, 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
     principalId: managedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
-  }
-}
-
-// Store secrets in Key Vault
-resource openAiKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'openai-api-key'
-  properties: {
-    value: openAiApiKey
-  }
-}
-
-resource langChainKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'langchain-api-key'
-  properties: {
-    value: langChainApiKey
-  }
-}
-
-resource postgresPasswordSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'postgres-password'
-  properties: {
-    value: postgresPassword
   }
 }
 
@@ -168,114 +108,18 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-pr
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: false
+    adminUserEnabled: true
   }
 }
 
-// AcrPull role assignment for managed identity
+// ACR Pull role for managed identity
 resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, managedIdentity.id, '7f951dda-4ed3-4680-a7ca-43fe172d538d')
   scope: containerRegistry
+  name: guid(containerRegistry.id, managedIdentity.id, '7f951dda-4ed3-4680-a7ca-43fe172d538d')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
     principalId: managedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
-  }
-}
-
-// ============================================================================
-// Azure Database for PostgreSQL Flexible Server
-// ============================================================================
-resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview' = {
-  name: 'azpg${resourceToken}'
-  location: location
-  tags: tags
-  sku: {
-    name: 'Standard_B1ms'
-    tier: 'Burstable'
-  }
-  properties: {
-    version: '16'
-    administratorLogin: postgresUser
-    administratorLoginPassword: postgresPassword
-    storage: {
-      storageSizeGB: 32
-    }
-    backup: {
-      backupRetentionDays: 7
-      geoRedundantBackup: 'Disabled'
-    }
-    highAvailability: {
-      mode: 'Disabled'
-    }
-    network: {
-      publicNetworkAccess: 'Enabled'
-    }
-  }
-}
-
-// PostgreSQL database
-resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-01-preview' = {
-  parent: postgresServer
-  name: 'dvd'
-  properties: {
-    charset: 'UTF8'
-    collation: 'en_US.utf8'
-  }
-}
-
-// Allow Azure services to access PostgreSQL
-resource postgresFirewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = {
-  parent: postgresServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// ============================================================================
-// Azure Cosmos DB (MongoDB API)
-// ============================================================================
-resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
-  name: 'azcosmos${resourceToken}'
-  location: location
-  tags: tags
-  kind: 'MongoDB'
-  properties: {
-    databaseAccountOfferType: 'Standard'
-    apiProperties: {
-      serverVersion: '4.2'
-    }
-    capabilities: [
-      {
-        name: 'EnableMongo'
-      }
-      {
-        name: 'EnableServerless'
-      }
-    ]
-    locations: [
-      {
-        locationName: location
-        failoverPriority: 0
-        isZoneRedundant: false
-      }
-    ]
-    consistencyPolicy: {
-      defaultConsistencyLevel: 'Session'
-    }
-  }
-}
-
-// Cosmos DB MongoDB database
-resource cosmosMongoDb 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2024-05-15' = {
-  parent: cosmosDbAccount
-  name: mongoDbDatabase
-  properties: {
-    resource: {
-      id: mongoDbDatabase
-    }
   }
 }
 
@@ -335,22 +179,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       secrets: [
         {
           name: 'openai-api-key'
-          keyVaultUrl: openAiKeySecret.properties.secretUri
-          identity: managedIdentity.id
+          value: openAiApiKey
         }
         {
           name: 'langchain-api-key'
-          keyVaultUrl: langChainKeySecret.properties.secretUri
-          identity: managedIdentity.id
-        }
-        {
-          name: 'postgres-password'
-          keyVaultUrl: postgresPasswordSecret.properties.secretUri
-          identity: managedIdentity.id
-        }
-        {
-          name: 'mongodb-connection-string'
-          value: cosmosDbAccount.listConnectionStrings().connectionStrings[0].connectionString
+          value: langChainApiKey
         }
         {
           name: 'connection-store-mongodb-uri'
@@ -362,7 +195,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'db-agent'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: '${containerRegistry.properties.loginServer}/db-agent:latest'
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -383,42 +216,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'LANGCHAIN_PROJECT'
               value: langChainProject
-            }
-            {
-              name: 'POSTGRES_USER'
-              value: postgresUser
-            }
-            {
-              name: 'POSTGRES_PASSWORD'
-              secretRef: 'postgres-password'
-            }
-            {
-              name: 'POSTGRES_HOST'
-              value: postgresServer.properties.fullyQualifiedDomainName
-            }
-            {
-              name: 'POSTGRES_PORT'
-              value: '5432'
-            }
-            {
-              name: 'POSTGRES_DB'
-              value: postgresDb
-            }
-            {
-              name: 'POSTGRES_SCHEMA'
-              value: postgresSchema
-            }
-            {
-              name: 'POSTGRES_SSLMODE'
-              value: 'require'
-            }
-            {
-              name: 'MONGODB_CONNECTION_STRING'
-              secretRef: 'mongodb-connection-string'
-            }
-            {
-              name: 'MONGODB_DATABASE'
-              value: mongoDbDatabase
             }
             {
               name: 'CONNECTION_STORE_MONGODB_URI'
@@ -463,8 +260,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 output containerRegistryEndpoint string = containerRegistry.properties.loginServer
 output containerRegistryName string = containerRegistry.name
 output keyVaultName string = keyVault.name
-output postgresHost string = postgresServer.properties.fullyQualifiedDomainName
-output cosmosDbConnectionString string = 'mongodb://${cosmosDbAccount.name}.mongo.cosmos.azure.com:10255/${mongoDbDatabase}?ssl=true&replicaSet=globaldb'
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output managedIdentityId string = managedIdentity.id
 output managedIdentityClientId string = managedIdentity.properties.clientId

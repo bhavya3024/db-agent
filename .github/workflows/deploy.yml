@@ -21,22 +21,10 @@ jobs:
       # App secrets
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+      LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
       # Connection Store (shared MongoDB with NextJS UI)
       CONNECTION_STORE_MONGODB_URI: ${{ secrets.CONNECTION_STORE_MONGODB_URI }}
       CONNECTION_STORE_DB_NAME: ${{ secrets.CONNECTION_STORE_DB_NAME }}
-      # App config
-      LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
-      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_SCHEMA: ${{ secrets.POSTGRES_SCHEMA }}
-      MONGODB_HOST: ${{ secrets.MONGODB_HOST }}
-      MONGODB_PORT: ${{ secrets.MONGODB_PORT }}
-      MONGODB_USERNAME: ${{ secrets.MONGODB_USERNAME }}
-      MONGODB_DATABASE: ${{ secrets.MONGODB_DATABASE }}
 
     steps:
       - name: Checkout code
