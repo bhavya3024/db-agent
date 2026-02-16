@@ -50,16 +50,27 @@ class DatabaseConfig:
         elif self.db_type == DatabaseType.SQLITE:
             return f"sqlite:///{self.database}"
         elif self.db_type == DatabaseType.MONGODB:
-            if self.user and self.password:
-                from urllib.parse import quote_plus
-                # URL encode password to handle special characters
-                encoded_password = quote_plus(self.password)
-                base_url = f"mongodb://{self.user}:{encoded_password}@{self.host}:{self.port}/{self.database}"
-                # Add SSL and Cosmos DB required parameters
-                if self.sslmode == 'require' or self.port == 10255:  # Cosmos DB uses port 10255
-                    base_url += "?ssl=true&retrywrites=false&maxIdleTimeMS=120000"
-                return base_url
-            return f"mongodb://{self.host}:{self.port}/{self.database}"
+            from urllib.parse import quote_plus
+            
+            # Check if this is a MongoDB Atlas host (contains .mongodb.net)
+            is_atlas = ".mongodb.net" in self.host
+            
+            if is_atlas:
+                # MongoDB Atlas uses mongodb+srv:// protocol (no port)
+                if self.user and self.password:
+                    encoded_password = quote_plus(self.password)
+                    return f"mongodb+srv://{self.user}:{encoded_password}@{self.host}/{self.database}?retryWrites=true&w=majority"
+                return f"mongodb+srv://{self.host}/{self.database}?retryWrites=true&w=majority"
+            else:
+                # Standard MongoDB connection with port
+                if self.user and self.password:
+                    encoded_password = quote_plus(self.password)
+                    base_url = f"mongodb://{self.user}:{encoded_password}@{self.host}:{self.port}/{self.database}"
+                    # Add SSL and Cosmos DB required parameters
+                    if self.sslmode == 'require' or self.port == 10255:  # Cosmos DB uses port 10255
+                        base_url += "?ssl=true&retrywrites=false&maxIdleTimeMS=120000"
+                    return base_url
+                return f"mongodb://{self.host}:{self.port}/{self.database}"
         else:
             raise ValueError(f"Unsupported database type: {self.db_type}")
 

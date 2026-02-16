@@ -122,11 +122,22 @@ def setup_connection_from_store(connection_id: str, user_id: str) -> tuple[bool,
     """
     global db_manager, connection_store
     
+    # Log connection store status
+    print(f"[ConnectionStore] Attempting to fetch connection...")
+    print(f"[ConnectionStore] connection_id: {connection_id}")
+    print(f"[ConnectionStore] user_id: {user_id}")
+    print(f"[ConnectionStore] Store instance: {connection_store}")
+    print(f"[ConnectionStore] Store._db is None: {connection_store._db is None}")
+    print(f"[ConnectionStore] Store._client is None: {connection_store._client is None}")
+    
     # Fetch connection details from store
     connection = connection_store.get_connection_by_id(connection_id, user_id)
+    print(f"[ConnectionStore] Fetch result: {'Found' if connection else 'Not found'}")
     if not connection:
-        print(f"Connection not found or unauthorized: {connection_id}")
+        print(f"[ConnectionStore] ✗ Connection not found or unauthorized: {connection_id}")
         return False, None
+    
+    print(f"[ConnectionStore] ✓ Connection found: {connection.get('name')} (type: {connection.get('type')})")
     
     db_type_str = connection.get("type", "")
     db_type_map = {

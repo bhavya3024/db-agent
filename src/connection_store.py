@@ -38,14 +38,23 @@ class ConnectionStore:
         try:
             print(f"Connecting to connection store... (URI length: {len(mongodb_uri)})")
             
-            # Add TLS settings for MongoDB Atlas compatibility
-            import ssl
-            self._client = MongoClient(
-                mongodb_uri, 
-                serverSelectionTimeoutMS=5000,
-                tls=True,
-                tlsAllowInvalidCertificates=True,  # For development - remove in production
-            )
+            # Determine if this is a local connection (no TLS needed)
+            is_local = "localhost" in mongodb_uri or "127.0.0.1" in mongodb_uri
+            
+            # Build connection options
+            connection_options = {
+                "serverSelectionTimeoutMS": 5000,
+            }
+            
+            # Only enable TLS for non-local connections (e.g., MongoDB Atlas)
+            if not is_local:
+                connection_options["tls"] = True
+                connection_options["tlsAllowInvalidCertificates"] = True  # For development
+                print("  Using TLS for remote connection")
+            else:
+                print("  Local connection detected, TLS disabled")
+            
+            self._client = MongoClient(mongodb_uri, **connection_options)
             
             # Extract database name from URI or use default
             db_name = os.getenv("CONNECTION_STORE_DB_NAME", "db-agent")
@@ -138,11 +147,23 @@ class ConnectionStore:
             return f"postgresql://{host}:{port}/{database}"
             
         elif db_type == "mongodb":
-            if username and password:
-                from urllib.parse import quote_plus
-                encoded_password = quote_plus(password)
-                return f"mongodb://{username}:{encoded_password}@{host}:{port}/{database}"
-            return f"mongodb://{host}:{port}/{database}"
+            from urllib.parse import quote_plus
+            
+            # Check if this is a MongoDB Atlas host (contains .mongodb.net)
+            is_atlas = ".mongodb.net" in host
+            
+            if is_atlas:
+                # MongoDB Atlas uses mongodb+srv:// protocol (no port)
+                if username and password:
+                    encoded_password = quote_plus(password)
+                    return f"mongodb+srv://{username}:{encoded_password}@{host}/{database}?retryWrites=true&w=majority"
+                return f"mongodb+srv://{host}/{database}?retryWrites=true&w=majority"
+            else:
+                # Standard MongoDB connection with port
+                if username and password:
+                    encoded_password = quote_plus(password)
+                    return f"mongodb://{username}:{encoded_password}@{host}:{port}/{database}"
+                return f"mongodb://{host}:{port}/{database}"
             
         elif db_type == "mysql":
             if username and password:
