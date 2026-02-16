@@ -68,7 +68,7 @@ class ConnectionStore:
         Returns:
             Connection details dict or None if not found/unauthorized
         """
-        if not self._db:
+        if self._db is None:
             print(f"Connection store not available - cannot fetch connection {connection_id}")
             return None
         
