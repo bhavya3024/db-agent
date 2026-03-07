@@ -11,6 +11,7 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.postgres import PostgresSaver
 from openai import RateLimitError
 
 from src.database import (
@@ -524,8 +525,21 @@ def create_graph():
     
     # After mongodb tools, go back to mongodb agent
     workflow.add_edge("mongodb_tools", "mongodb_agent")
-    
-    return workflow.compile()
+
+    # Build PostgreSQL connection string from environment
+    pg_user = os.getenv("POSTGRES_USER", "postgres")
+    pg_password = os.getenv("POSTGRES_PASSWORD", "")
+    pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    pg_port = os.getenv("POSTGRES_PORT", "5432")
+    pg_db = os.getenv("POSTGRES_DB", "langgraph")
+    conn_string = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
+
+    import psycopg
+    conn = psycopg.connect(conn_string, autocommit=True)
+    checkpointer = PostgresSaver(conn)
+    checkpointer.setup()
+
+    return workflow.compile(checkpointer=checkpointer)
 
 
 # ============================================================================
@@ -565,15 +579,3 @@ def run_agent(
     return final_message.content
 
 
-if __name__ == "__main__":
-    # Example usage
-    print("Database Agent Ready!")
-    print("=" * 50)
-    print("This agent has two sub-agents:")
-    print("  - PostgreSQL Agent: For SQL database queries")
-    print("  - MongoDB Agent: For NoSQL database queries")
-    print("=" * 50)
-    
-    # Test the agent
-    response = run_agent("Hello, I want to query some data.")
-    print(f"Agent Response:\n{response}")

@@ -29,6 +29,22 @@ param connectionStoreMongoDbUri string
 @description('Connection Store database name')
 param connectionStoreDbName string
 
+@description('PostgreSQL host')
+param postgresHost string
+
+@description('PostgreSQL port')
+param postgresPort string = '5432'
+
+@description('PostgreSQL user')
+param postgresUser string
+
+@secure()
+@description('PostgreSQL password')
+param postgresPassword string
+
+@description('PostgreSQL database name for LangGraph checkpoints')
+param postgresDb string = 'langgraph'
+
 // ============================================================================
 // User Assigned Managed Identity
 // ============================================================================
@@ -189,6 +205,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'connection-store-mongodb-uri'
           value: connectionStoreMongoDbUri
         }
+        {
+          name: 'postgres-password'
+          value: postgresPassword
+        }
       ]
     }
     template: {
@@ -225,6 +245,26 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'CONNECTION_STORE_DB_NAME'
               value: connectionStoreDbName
+            }
+            {
+              name: 'POSTGRES_HOST'
+              value: postgresHost
+            }
+            {
+              name: 'POSTGRES_PORT'
+              value: postgresPort
+            }
+            {
+              name: 'POSTGRES_USER'
+              value: postgresUser
+            }
+            {
+              name: 'POSTGRES_PASSWORD'
+              secretRef: 'postgres-password'
+            }
+            {
+              name: 'POSTGRES_DB'
+              value: postgresDb
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'

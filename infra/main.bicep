@@ -30,6 +30,22 @@ param connectionStoreMongoDbUri string
 @description('Connection Store database name')
 param connectionStoreDbName string = 'db-agent'
 
+@description('PostgreSQL host')
+param postgresHost string
+
+@description('PostgreSQL port')
+param postgresPort string = '5432'
+
+@description('PostgreSQL user')
+param postgresUser string
+
+@secure()
+@description('PostgreSQL password')
+param postgresPassword string
+
+@description('PostgreSQL database name for LangGraph checkpoints')
+param postgresDb string = 'langgraph'
+
 // Resource token for unique naming
 var resourceToken = uniqueString(subscription().id, location, environmentName)
 
@@ -59,6 +75,11 @@ module resources 'resources.bicep' = {
     langChainProject: langChainProject
     connectionStoreMongoDbUri: connectionStoreMongoDbUri
     connectionStoreDbName: connectionStoreDbName
+    postgresHost: postgresHost
+    postgresPort: postgresPort
+    postgresUser: postgresUser
+    postgresPassword: postgresPassword
+    postgresDb: postgresDb
   }
 }
 

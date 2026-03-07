@@ -25,6 +25,21 @@
     },
     "connectionStoreDbName": {
       "value": "${CONNECTION_STORE_DB_NAME=db-agent}"
+    },
+    "postgresHost": {
+      "value": "${POSTGRES_HOST}"
+    },
+    "postgresPort": {
+      "value": "${POSTGRES_PORT=5432}"
+    },
+    "postgresUser": {
+      "value": "${POSTGRES_USER}"
+    },
+    "postgresPassword": {
+      "value": "${POSTGRES_PASSWORD}"
+    },
+    "postgresDb": {
+      "value": "${POSTGRES_DB=langgraph}"
     }
   }
 }
