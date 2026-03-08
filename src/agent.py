@@ -2,7 +2,7 @@
 
 import os
 import time
-from typing import TypedDict, Annotated, Literal, Optional, Dict, Any
+from typing import TypedDict, Annotated, Literal, Optional
 from dotenv import load_dotenv
 
 from langchain_core.messages import HumanMessage, BaseMessage, ToolMessage, SystemMessage
@@ -11,11 +11,9 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.postgres import PostgresSaver
 from openai import RateLimitError
 
 from src.database import (
-    DatabaseManager, 
     initialize_database_manager,
     DatabaseConfig,
     DatabaseType,
@@ -450,8 +448,18 @@ def route_after_router_tools(state: AgentState) -> Literal["router_agent", "post
 # GRAPH CONSTRUCTION
 # ============================================================================
 
+# Cached graph instance — created once so the psycopg connection and
+# PostgresSaver live for the full process lifetime and checkpoint writes
+# are never lost due to the connection being garbage-collected.
+_compiled_graph = None
+
+
 def create_graph():
-    """Create and compile the LangGraph state graph with sub-agents."""
+    """Create (or return the cached) compiled LangGraph state graph."""
+    global _compiled_graph
+    if _compiled_graph is not None:
+        return _compiled_graph
+
     workflow = StateGraph(AgentState)
     
     # Add all nodes
@@ -526,20 +534,10 @@ def create_graph():
     # After mongodb tools, go back to mongodb agent
     workflow.add_edge("mongodb_tools", "mongodb_agent")
 
-    # Build PostgreSQL connection string from environment
-    pg_user = os.getenv("POSTGRES_USER", "postgres")
-    pg_password = os.getenv("POSTGRES_PASSWORD", "")
-    pg_host = os.getenv("POSTGRES_HOST", "localhost")
-    pg_port = os.getenv("POSTGRES_PORT", "5432")
-    pg_db = os.getenv("POSTGRES_DB", "langgraph")
-    conn_string = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
-
-    import psycopg
-    conn = psycopg.connect(conn_string, autocommit=True)
-    checkpointer = PostgresSaver(conn)
-    checkpointer.setup()
-
-    return workflow.compile(checkpointer=checkpointer)
+    # Checkpointing is handled by the LangGraph server via DATABASE_URI.
+    # No manual checkpointer needed here.
+    _compiled_graph = workflow.compile()
+    return _compiled_graph
 
 
 # ============================================================================
@@ -548,6 +546,7 @@ def create_graph():
 
 def run_agent(
     user_input: str, 
+    thread_id: str,
     database_type: Optional[str] = None,
     connection_id: Optional[str] = None,
     user_id: Optional[str] = None,
@@ -556,6 +555,7 @@ def run_agent(
     
     Args:
         user_input: The user's message
+        thread_id: Unique identifier for the conversation thread (used for checkpointing)
         database_type: Optional pre-selected database type ("postgres" or "mongodb")
         connection_id: Optional MongoDB ObjectId of the user's database connection
         user_id: Optional user ID for ownership verification
@@ -570,9 +570,12 @@ def run_agent(
         "connection_id": connection_id,
         "user_id": user_id,
     }
+
+    print('thread id -->>', thread_id)
     
-    # Run the graph
-    result = graph.invoke(initial_state)
+    # Run the graph — thread_id is required for PostgresSaver to persist checkpoints
+    config = {"configurable": {"thread_id": thread_id}}
+    result = graph.invoke(initial_state, config=config)
     
     # Get the final response
     final_message = result["messages"][-1]

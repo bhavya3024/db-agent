@@ -39,7 +39,7 @@ class ConnectionStore:
             print(f"Connecting to connection store... (URI length: {len(mongodb_uri)})")
             
             # Determine if this is a local connection (no TLS needed)
-            is_local = "localhost" in mongodb_uri or "127.0.0.1" in mongodb_uri
+            is_local = any(h in mongodb_uri for h in ["localhost", "127.0.0.1", "172.17.0.1"])
             
             # Build connection options
             connection_options = {

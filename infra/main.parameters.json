@@ -26,20 +26,11 @@
     "connectionStoreDbName": {
       "value": "${CONNECTION_STORE_DB_NAME}"
     },
-    "postgresHost": {
-      "value": "${POSTGRES_HOST}"
+    "databaseUri": {
+      "value": "${DATABASE_URI}"
     },
-    "postgresPort": {
-      "value": "${POSTGRES_PORT}"
-    },
-    "postgresUser": {
-      "value": "${POSTGRES_USER}"
-    },
-    "postgresPassword": {
-      "value": "${POSTGRES_PASSWORD}"
-    },
-    "postgresDb": {
-      "value": "${POSTGRES_DB}"
+    "redisUri": {
+      "value": "${REDIS_URI}"
     }
   }
 }

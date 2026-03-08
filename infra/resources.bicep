@@ -29,21 +29,13 @@ param connectionStoreMongoDbUri string
 @description('Connection Store database name')
 param connectionStoreDbName string
 
-@description('PostgreSQL host')
-param postgresHost string
-
-@description('PostgreSQL port')
-param postgresPort string = '5432'
-
-@description('PostgreSQL user')
-param postgresUser string
+@secure()
+@description('PostgreSQL connection string for LangGraph checkpoints')
+param databaseUri string
 
 @secure()
-@description('PostgreSQL password')
-param postgresPassword string
-
-@description('PostgreSQL database name for LangGraph checkpoints')
-param postgresDb string = 'langgraph'
+@description('Redis connection string for LangGraph distributed locking')
+param redisUri string
 
 // ============================================================================
 // User Assigned Managed Identity
@@ -206,8 +198,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           value: connectionStoreMongoDbUri
         }
         {
-          name: 'postgres-password'
-          value: postgresPassword
+          name: 'database-uri'
+          value: databaseUri
+        }
+        {
+          name: 'redis-uri'
+          value: redisUri
         }
       ]
     }
@@ -247,24 +243,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: connectionStoreDbName
             }
             {
-              name: 'POSTGRES_HOST'
-              value: postgresHost
+              name: 'DATABASE_URI'
+              secretRef: 'database-uri'
             }
             {
-              name: 'POSTGRES_PORT'
-              value: postgresPort
-            }
-            {
-              name: 'POSTGRES_USER'
-              value: postgresUser
-            }
-            {
-              name: 'POSTGRES_PASSWORD'
-              secretRef: 'postgres-password'
-            }
-            {
-              name: 'POSTGRES_DB'
-              value: postgresDb
+              name: 'REDIS_URI'
+              secretRef: 'redis-uri'
             }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
