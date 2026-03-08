@@ -45,9 +45,12 @@ USER appuser
 # Expose the LangGraph server port
 EXPOSE 8000
 
+# Set LangGraph config path
+ENV LANGGRAPH_CONFIG=/app/langgraph.json
+
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/ok')" || exit 1
 
-# Run the LangGraph API server using the inmem variant
-CMD ["langgraph", "dev", "--host", "0.0.0.0", "--port", "8000", "--no-browser"]
+# Run the LangGraph API server in production mode
+CMD ["uvicorn", "langgraph_api.server:app", "--host", "0.0.0.0", "--port", "8000"]
