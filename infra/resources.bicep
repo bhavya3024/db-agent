@@ -251,6 +251,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               secretRef: 'redis-uri'
             }
             {
+              name: 'LANGGRAPH_RUNTIME_EDITION'
+              value: 'postgres'
+            }
+            {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: appInsights.properties.ConnectionString
             }

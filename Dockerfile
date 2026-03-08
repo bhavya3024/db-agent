@@ -47,6 +47,7 @@ EXPOSE 8000
 
 # Set LangGraph config path
 ENV LANGGRAPH_CONFIG=/app/langgraph.json
+ENV LANGGRAPH_RUNTIME_EDITION=postgres
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
