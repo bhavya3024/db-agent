@@ -1,23 +1,12 @@
 FROM langchain/langgraph-api:3.11
 
-# Install uv for fast dependency installation
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Copy application code into the deps directory
+ADD src /deps/__outer_src/src
+ADD pyproject.toml README.md /deps/__outer_src/
 
-# Copy dependency files
-COPY pyproject.toml README.md /deps/
+# Install dependencies using the base image's constraints to avoid version conflicts
+RUN PYTHONDONTWRITEBYTECODE=1 pip install --no-cache-dir -c /api/constraints.txt -e /deps/__outer_src
 
-# Install dependencies
-RUN PYTHONDONTWRITEBYTECODE=1 uv pip install --system --no-cache /deps/
-
-# Copy application code
-COPY src/ /deps/src/
-COPY langgraph.json /deps/langgraph.json
-
-ENV LANGGRAPH_CONFIG=/deps/langgraph.json
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/ok')" || exit 1
-
-# Run the LangGraph API server in production mode
-CMD ["uvicorn", "langgraph_api.server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Tell the LangGraph runtime where to find the graph
+ENV LANGSERVE_GRAPHS='{"agent": "/deps/__outer_src/src/agent.py:create_graph"}'
+ENV PORT=8000
