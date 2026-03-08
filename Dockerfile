@@ -1,53 +1,19 @@
-# Build stage
-FROM python:3.11-slim AS builder
+FROM langchain/langgraph-api:3.11
 
-WORKDIR /app
-
-# Install build dependencies and uv
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv (fast Python package manager)
+# Install uv for fast dependency installation
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy dependency and build files
-COPY pyproject.toml README.md ./
+# Copy dependency files
+COPY pyproject.toml README.md /deps/
 
-# Install dependencies using uv
-RUN uv pip install --system --no-cache .
-
-# Production stage
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Install dependencies
+RUN PYTHONDONTWRITEBYTECODE=1 uv pip install --system --no-cache /deps/
 
 # Copy application code
-COPY src/ ./src/
-COPY langgraph.json ./
-COPY pyproject.toml ./
+COPY src/ /deps/src/
+COPY langgraph.json /deps/langgraph.json
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Expose the LangGraph server port
-EXPOSE 8000
-
-# Set LangGraph config path
-ENV LANGGRAPH_CONFIG=/app/langgraph.json
-ENV LANGGRAPH_RUNTIME_EDITION=postgres
+ENV LANGGRAPH_CONFIG=/deps/langgraph.json
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
