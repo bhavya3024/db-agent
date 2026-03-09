@@ -14,6 +14,7 @@ from langgraph.prebuilt import ToolNode
 from openai import RateLimitError
 
 from src.database import DatabaseManager
+from src.utils import sanitize_error as _sanitize_error
 
 # Load environment variables
 load_dotenv()
@@ -85,7 +86,7 @@ def mongodb_get_schema() -> str:
         
         return _truncate_result(result)
     except Exception as e:
-        return f"Error getting schema: {str(e)}"
+        return f"Error getting schema: {_sanitize_error(e)}"
 
 
 @tool
@@ -137,7 +138,7 @@ def mongodb_execute_query(query: str) -> str:
         
         return _truncate_result(f"Query returned {total_results} document(s):\n{output}")
     except Exception as e:
-        return f"Error executing query: {str(e)}"
+        return f"Error executing query: {_sanitize_error(e)}"
 
 
 @tool
@@ -166,7 +167,7 @@ def mongodb_get_collection_sample(collection_name: str, limit: int = 5) -> str:
         
         return f"Sample data from {collection_name}:\n{json.dumps(results, indent=2, default=str)}"
     except Exception as e:
-        return f"Error sampling collection: {str(e)}"
+        return f"Error sampling collection: {_sanitize_error(e)}"
 
 
 # ============================================================================

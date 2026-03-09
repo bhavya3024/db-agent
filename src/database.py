@@ -17,6 +17,8 @@ from pymongo.database import Database as MongoDatabase
 
 load_dotenv()
 
+from src.utils import sanitize_error as _sanitize_error
+
 
 class DatabaseType(Enum):
     """Supported database types."""
@@ -171,7 +173,7 @@ class SQLDatabaseConnection(BaseDatabaseConnection):
                 conn.commit()
                 return [{"affected_rows": result.rowcount}]
         except Exception as e:
-            return [{"error": str(e)}]
+            return [{"error": _sanitize_error(e)}]
     
     def get_schema_info(self) -> Dict[str, Any]:
         """Get database schema information."""
@@ -363,7 +365,7 @@ class MongoDBConnection(BaseDatabaseConnection):
         except json.JSONDecodeError as e:
             return [{"error": f"Invalid JSON query: {str(e)}. For MongoDB, queries must be valid JSON."}]
         except Exception as e:
-            return [{"error": str(e)}]
+            return [{"error": _sanitize_error(e)}]
     
     def get_schema_info(self) -> Dict[str, Any]:
         """Get MongoDB database schema information (collections and sample fields)."""
@@ -402,7 +404,7 @@ class MongoDBConnection(BaseDatabaseConnection):
                     "indexes": indexes
                 }
         except Exception as e:
-            schema_info["error"] = str(e)
+            schema_info["error"] = _sanitize_error(e)
         
         return schema_info
     
@@ -438,7 +440,7 @@ class MongoDBConnection(BaseDatabaseConnection):
                 results.append(doc)
             return results
         except Exception as e:
-            return [{"error": str(e)}]
+            return [{"error": _sanitize_error(e)}]
     
     def close(self):
         """Close the MongoDB connection."""

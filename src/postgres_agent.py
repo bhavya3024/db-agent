@@ -14,6 +14,7 @@ from langgraph.prebuilt import ToolNode
 from openai import RateLimitError
 
 from src.database import DatabaseManager
+from src.utils import sanitize_error as _sanitize_error
 
 # Load environment variables
 load_dotenv()
@@ -88,7 +89,7 @@ def postgres_get_schema() -> str:
         
         return _truncate_result(result)
     except Exception as e:
-        return f"Error getting schema: {str(e)}"
+        return f"Error getting schema: {_sanitize_error(e)}"
 
 
 @tool
@@ -133,7 +134,7 @@ def postgres_execute_sql(query: str) -> str:
         
         return _truncate_result(f"Query returned {total_results} rows:\n{output}")
     except Exception as e:
-        return f"Error executing query: {str(e)}"
+        return f"Error executing query: {_sanitize_error(e)}"
 
 
 @tool
@@ -162,7 +163,7 @@ def postgres_get_table_sample(table_name: str, limit: int = 5) -> str:
         
         return f"Sample data from {table_name}:\n{json.dumps(results, indent=2, default=str)}"
     except Exception as e:
-        return f"Error sampling table: {str(e)}"
+        return f"Error sampling table: {_sanitize_error(e)}"
 
 
 # ============================================================================

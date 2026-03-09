@@ -10,6 +10,21 @@ from langgraph.graph.message import add_messages
 from openai import RateLimitError
 
 
+def sanitize_error(error: Exception) -> str:
+    """Sanitize error messages to strip credentials before they reach the LLM."""
+    import re
+    msg = str(error)
+    # Strip credentials from connection URIs (postgresql://, mongodb://, mongodb+srv://, mysql://)
+    msg = re.sub(
+        r"((?:postgresql|mongodb(?:\+srv)?|mysql(?:\+pymysql)?)://)([^@]+)@",
+        r"\1***:***@",
+        msg,
+    )
+    # Also redact password= query params
+    msg = re.sub(r"password=[^&\s]+", "password=***", msg, flags=re.IGNORECASE)
+    return msg
+
+
 # Constants for limiting result sizes to avoid token limits
 MAX_RESULT_ROWS = 20
 MAX_TABLES_IN_SCHEMA = 50
