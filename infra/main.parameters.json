@@ -31,6 +31,12 @@
     },
     "redisUri": {
       "value": "${REDIS_URI}"
+    },
+    "opServiceAccountToken": {
+      "value": "${OP_SERVICE_ACCOUNT_TOKEN}"
+    },
+    "opVaultId": {
+      "value": "${OP_VAULT_ID}"
     }
   }
 }

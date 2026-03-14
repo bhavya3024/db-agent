@@ -37,6 +37,13 @@ param databaseUri string
 @description('Redis connection string for LangGraph distributed locking')
 param redisUri string
 
+@secure()
+@description('1Password service account token for resolving database credentials')
+param opServiceAccountToken string
+
+@description('1Password vault ID where database credentials are stored')
+param opVaultId string
+
 // ============================================================================
 // User Assigned Managed Identity
 // ============================================================================
@@ -205,6 +212,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'redis-uri'
           value: redisUri
         }
+        {
+          name: 'op-service-account-token'
+          value: opServiceAccountToken
+        }
       ]
     }
     template: {
@@ -249,6 +260,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'REDIS_URI'
               secretRef: 'redis-uri'
+            }
+            {
+              name: 'OP_SERVICE_ACCOUNT_TOKEN'
+              secretRef: 'op-service-account-token'
+            }
+            {
+              name: 'OP_VAULT_ID'
+              value: opVaultId
             }
             {
               name: 'LANGGRAPH_RUNTIME_EDITION'

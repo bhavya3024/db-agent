@@ -16,6 +16,7 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "sqlalchemy>=2.0.0",
     "pymongo>=4.6.0",
+    "onepassword-sdk>=0.1.0,<1.0.0",
     "uvicorn>=0.30.0",
 ]
 

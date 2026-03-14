@@ -6,6 +6,8 @@ from bson import ObjectId
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
+from src.onepassword_resolver import get_onepassword_resolver
+
 load_dotenv()
 
 
@@ -39,7 +41,10 @@ class ConnectionStore:
             print(f"Connecting to connection store... (URI length: {len(mongodb_uri)})")
             
             # Determine if this is a local connection (no TLS needed)
-            is_local = any(h in mongodb_uri for h in ["localhost", "127.0.0.1", "172.17.0.1"])
+            is_local = any(
+                h in mongodb_uri
+                for h in ["localhost", "127.0.0.1", "172.17.0.1", "host.docker.internal"]
+            )
             
             # Build connection options
             connection_options = {
@@ -107,6 +112,8 @@ class ConnectionStore:
                 return None
             
             print(f"Found connection: {connection.get('name')} ({connection.get('type')})")
+
+            connection = self.hydrate_connection_credentials(connection)
             
             # Convert ObjectId to string
             connection["_id"] = str(connection["_id"])
@@ -118,6 +125,37 @@ class ConnectionStore:
             import traceback
             traceback.print_exc()
             return None
+
+    def hydrate_connection_credentials(self, connection: Dict[str, Any]) -> Dict[str, Any]:
+        """Hydrate connection credentials from 1Password when only references are stored."""
+        hydrated_connection = dict(connection)
+
+        if hydrated_connection.get("connectionString") or hydrated_connection.get("password"):
+            return hydrated_connection
+
+        resolver = get_onepassword_resolver()
+        has_stored_refs = any(
+            hydrated_connection.get(key)
+            for key in ("connectionStringSecretRef", "passwordSecretRef", "credentialItemId")
+        )
+
+        if not has_stored_refs:
+            return hydrated_connection
+
+        if not resolver.is_configured():
+            print("1Password resolver is not configured; cannot hydrate stored connection credentials")
+            return hydrated_connection
+
+        try:
+            resolved_values = resolver.resolve_connection_values(hydrated_connection)
+            hydrated_connection.update({key: value for key, value in resolved_values.items() if value})
+        except Exception as e:
+            print(
+                "Failed to resolve 1Password credentials for connection "
+                f"{hydrated_connection.get('_id')}: {e}"
+            )
+
+        return hydrated_connection
     
     def build_connection_string(self, connection: Dict[str, Any]) -> Optional[str]:
         """Build a connection string from connection details.

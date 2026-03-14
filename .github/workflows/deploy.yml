@@ -28,6 +28,9 @@ jobs:
       # LangGraph server persistence
       DATABASE_URI: ${{ secrets.DATABASE_URI }}
       REDIS_URI: ${{ secrets.REDIS_URI }}
+      # 1Password credentials for resolving database secrets
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      OP_VAULT_ID: ${{ secrets.OP_VAULT_ID }}
 
     steps:
       - name: Checkout code
@@ -38,7 +41,8 @@ jobs:
           # Strip newlines/carriage returns that make azd's JSON parameter substitution fail
           for var in OPENAI_API_KEY LANGCHAIN_API_KEY LANGCHAIN_PROJECT \
                      CONNECTION_STORE_MONGODB_URI CONNECTION_STORE_DB_NAME \
-                     DATABASE_URI REDIS_URI; do
+                     DATABASE_URI REDIS_URI \
+                     OP_SERVICE_ACCOUNT_TOKEN OP_VAULT_ID; do
             val=$(printenv "$var" | tr -d '\n\r')
             echo "$var=$val" >> $GITHUB_ENV
           done

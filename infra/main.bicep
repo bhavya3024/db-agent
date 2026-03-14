@@ -38,6 +38,13 @@ param databaseUri string
 @description('Redis connection string for LangGraph distributed locking')
 param redisUri string
 
+@secure()
+@description('1Password service account token for resolving database credentials')
+param opServiceAccountToken string
+
+@description('1Password vault ID where database credentials are stored')
+param opVaultId string
+
 // Resource token for unique naming
 var resourceToken = uniqueString(subscription().id, location, environmentName)
 
@@ -69,6 +76,8 @@ module resources 'resources.bicep' = {
     connectionStoreDbName: connectionStoreDbName
     databaseUri: databaseUri
     redisUri: redisUri
+    opServiceAccountToken: opServiceAccountToken
+    opVaultId: opVaultId
   }
 }
 
