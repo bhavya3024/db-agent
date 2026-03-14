@@ -253,6 +253,7 @@ class MongoDBAgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     database_selected: bool
     database_type: Optional[str]
+    connection_name: Optional[str]
 
 
 # ============================================================================
@@ -265,9 +266,18 @@ def mongodb_agent(state: MongoDBAgentState) -> MongoDBAgentState:
     llm = get_mongodb_llm()
     messages = state["messages"]
     
-    # Build system prompt with context
-    active = db_manager.active_connection
-    system_prompt = MONGODB_SYSTEM_PROMPT + f"\n\nActive database: {active}"
+    # Build system prompt scoped to this specific connection
+    conn_name = state.get("connection_name")
+    if conn_name:
+        system_prompt = (
+            f"You are a database assistant connected ONLY to the '{conn_name}' MongoDB database.\n"
+            f"You must ONLY answer questions about this specific connection. "
+            f"Do NOT mention, suggest, or discuss any other database connections or types.\n\n"
+            + MONGODB_SYSTEM_PROMPT
+        )
+    else:
+        active = db_manager.active_connection
+        system_prompt = MONGODB_SYSTEM_PROMPT + f"\n\nActive database: {active}"
     
     # Prepare messages
     non_system_messages = [m for m in messages if not isinstance(m, SystemMessage)]
@@ -294,6 +304,7 @@ def create_mongodb_tools_node():
         result = base_tool_node.invoke(state)
         result["database_selected"] = True
         result["database_type"] = "mongodb"
+        result["connection_name"] = state.get("connection_name")
         return result
     
     return tools_with_state

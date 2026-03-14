@@ -1,4 +1,4 @@
-"""PostgreSQL sub-agent for database operations."""
+"""MySQL sub-agent for database operations."""
 
 import os
 import json
@@ -16,63 +16,61 @@ from openai import RateLimitError
 from src.database import DatabaseManager
 from src.utils import sanitize_error as _sanitize_error
 
-# Load environment variables
 load_dotenv()
 
-# Constants for limiting result sizes
 MAX_RESULT_ROWS = 20
 MAX_TABLES_IN_SCHEMA = 50
 MAX_RESULT_CHARS = 10000
 
 
 def _truncate_result(result: str) -> str:
-    """Truncate result string if too long."""
     if len(result) > MAX_RESULT_CHARS:
         return result[:MAX_RESULT_CHARS] + f"\n\n... [truncated, showing first {MAX_RESULT_CHARS} chars]"
     return result
 
 
 # ============================================================================
-# POSTGRESQL AGENT TOOLS
+# DATABASE MANAGER REFERENCE
 # ============================================================================
 
-# Database manager reference (set by main agent)
 _db_manager: Optional[DatabaseManager] = None
 
 
 def set_db_manager(db_manager: DatabaseManager):
-    """Set the database manager reference."""
     global _db_manager
     _db_manager = db_manager
 
 
 def get_db_manager() -> DatabaseManager:
-    """Get the database manager reference."""
     if _db_manager is None:
         raise RuntimeError("Database manager not initialized. Call set_db_manager first.")
     return _db_manager
 
 
+# ============================================================================
+# MYSQL AGENT TOOLS
+# ============================================================================
+
 @tool
-def postgres_get_schema() -> str:
-    """Get the schema information for the PostgreSQL database including all tables and their columns."""
+def mysql_get_schema() -> str:
+    """Get the schema information for the MySQL database including all tables and their columns."""
     db_manager = get_db_manager()
     conn = db_manager.get_connection()
     if not conn:
-        return "No active database connection."
-    
+        return "No active MySQL database connection."
+
     if conn.is_nosql():
-        return "Current database is MongoDB, not PostgreSQL."
-    
+        return "Current connection is MongoDB, not MySQL."
+
     try:
         schema_info = conn.get_schema_info()
-        result = f"Database: {schema_info['database']} (Schema: {schema_info['schema']})\n\n"
-        
+        result = f"MySQL Database: {schema_info['database']}\n\n"
+
         tables = list(schema_info["tables"].items())
         if len(tables) > MAX_TABLES_IN_SCHEMA:
             result += f"Note: Showing first {MAX_TABLES_IN_SCHEMA} of {len(tables)} tables\n\n"
             tables = tables[:MAX_TABLES_IN_SCHEMA]
-        
+
         for table_name, table_info in tables:
             result += f"Table: {table_name}\n"
             result += "  Columns:\n"
@@ -80,122 +78,125 @@ def postgres_get_schema() -> str:
                 nullable = "NULL" if col["nullable"] else "NOT NULL"
                 pk = " (PK)" if col["name"] in table_info["primary_keys"] else ""
                 result += f"    - {col['name']}: {col['type']} {nullable}{pk}\n"
-            
+
             if table_info["foreign_keys"]:
                 result += "  Foreign Keys:\n"
                 for fk in table_info["foreign_keys"]:
                     result += f"    - {fk['columns']} -> {fk['references']}\n"
             result += "\n"
-        
+
         return _truncate_result(result)
     except Exception as e:
-        return f"Error getting schema: {_sanitize_error(e)}"
+        return f"Error getting MySQL schema: {_sanitize_error(e)}"
 
 
 @tool
-def postgres_execute_sql(query: str) -> str:
-    """Execute a SQL query on the PostgreSQL database.
-    
+def mysql_execute_query(query: str) -> str:
+    """Execute a SQL query on the MySQL database.
+
     Args:
-        query: The SQL query to execute. Can be SELECT, INSERT, UPDATE, DELETE, etc.
+        query: The MySQL SQL query to execute. Can be SELECT, INSERT, UPDATE, DELETE, etc.
     """
     db_manager = get_db_manager()
     conn = db_manager.get_connection()
     if not conn:
-        return "No active database connection."
-    
+        return "No active MySQL database connection."
+
     if conn.is_nosql():
-        return "Current database is MongoDB, not PostgreSQL."
-    
+        return "Current connection is MongoDB, not MySQL."
+
     try:
         results = conn.execute_query(query)
-        
+
         if not results:
             return "Query executed successfully. No results returned."
-        
+
         if "error" in results[0]:
-            return f"Query error: {results[0]['error']}"
-        
+            return f"MySQL query error: {results[0]['error']}"
+
         if "affected_rows" in results[0]:
             return f"Query executed successfully. Rows affected: {results[0]['affected_rows']}"
-        
-        # Limit results to avoid token limits
+
         total_results = len(results)
-        if total_results > MAX_RESULT_ROWS:
-            display_results = results[:MAX_RESULT_ROWS]
-            truncated = True
-        else:
-            display_results = results
-            truncated = False
-        
+        display_results = results[:MAX_RESULT_ROWS] if total_results > MAX_RESULT_ROWS else results
+        truncated = total_results > MAX_RESULT_ROWS
+
         output = json.dumps(display_results, indent=2, default=str)
         if truncated:
             output += f"\n\n... and {total_results - MAX_RESULT_ROWS} more rows (showing first {MAX_RESULT_ROWS})"
-        
+
         return _truncate_result(f"Query returned {total_results} rows:\n{output}")
     except Exception as e:
-        return f"Error executing query: {_sanitize_error(e)}"
+        return f"Error executing MySQL query: {_sanitize_error(e)}"
 
 
 @tool
-def postgres_get_table_sample(table_name: str, limit: int = 5) -> str:
-    """Get sample rows from a PostgreSQL table to understand its data.
-    
+def mysql_get_table_sample(table_name: str, limit: int = 5) -> str:
+    """Get sample rows from a MySQL table to understand its data.
+
     Args:
-        table_name: Name of the table to sample
-        limit: Number of rows to return (default 5)
+        table_name: Name of the MySQL table to sample
+        limit: Number of rows to return (default 5, max 10)
     """
     db_manager = get_db_manager()
     conn = db_manager.get_connection()
     if not conn:
-        return "No active database connection."
-    
+        return "No active MySQL database connection."
+
     if conn.is_nosql():
-        return "Current database is MongoDB, not PostgreSQL."
-    
+        return "Current connection is MongoDB, not MySQL."
+
     try:
         results = conn.get_table_sample(table_name, min(limit, 10))
         if not results:
-            return f"Table '{table_name}' is empty or does not exist."
-        
+            return f"MySQL table '{table_name}' is empty or does not exist."
+
         if "error" in results[0]:
             return f"Error: {results[0]['error']}"
-        
-        return f"Sample data from {table_name}:\n{json.dumps(results, indent=2, default=str)}"
+
+        return f"Sample data from MySQL table {table_name}:\n{json.dumps(results, indent=2, default=str)}"
     except Exception as e:
-        return f"Error sampling table: {_sanitize_error(e)}"
+        return f"Error sampling MySQL table: {_sanitize_error(e)}"
 
 
 # ============================================================================
 # TOOL COLLECTION
 # ============================================================================
 
-postgres_tools = [postgres_get_schema, postgres_execute_sql, postgres_get_table_sample]
+mysql_tools = [mysql_get_schema, mysql_execute_query, mysql_get_table_sample]
 
 
 # ============================================================================
 # SYSTEM PROMPT
 # ============================================================================
 
-POSTGRES_SYSTEM_PROMPT = """You are a SQL database expert assistant. You work with both PostgreSQL and MySQL databases.
+MYSQL_SYSTEM_PROMPT = """You are a MySQL database expert assistant. You work exclusively with MySQL databases.
 
 Your capabilities:
-1. Get schema information using postgres_get_schema
-2. Execute SQL queries using postgres_execute_sql
-3. Get sample data from tables using postgres_get_table_sample
+1. Get schema information using mysql_get_schema
+2. Execute MySQL queries using mysql_execute_query
+3. Get sample data from tables using mysql_get_table_sample
+
+MySQL-specific guidance:
+- Use backticks for identifiers: `table_name`, `column_name`
+- Use LIMIT instead of FETCH FIRST
+- Use SHOW TABLES, DESCRIBE, or INFORMATION_SCHEMA for metadata
+- AUTO_INCREMENT (not SERIAL) for auto-increment columns
+- Use IFNULL() instead of COALESCE where applicable
+- String functions: CONCAT(), SUBSTRING(), LENGTH(), etc.
+- Date functions: NOW(), DATE_FORMAT(), DATEDIFF(), etc.
 
 When helping users:
-- Use postgres_get_schema to understand the database structure before writing queries
-- Write standard SQL queries compatible with the active database type
-- Write safe, read-only queries unless explicitly asked to modify data
+- Always use mysql_get_schema first to understand the table structure
+- Write MySQL-compatible queries only (not PostgreSQL or ANSI SQL that MySQL doesn't support)
 - Explain your queries and results clearly
-- If a query fails, analyze the error and suggest corrections
-- Only talk about the currently connected database — do not mention other database types
+- If a query fails, check for MySQL-specific syntax issues
+- Only talk about this specific MySQL connection — do not mention other database types
 
 Always be careful with:
 - Avoiding SQL injection
 - Not exposing sensitive data without user consent
-- Warning before executing DELETE, UPDATE, or DROP statements
+- Warning before executing DELETE, UPDATE, DROP, or TRUNCATE statements
 """
 
 
@@ -203,19 +204,17 @@ Always be careful with:
 # LLM UTILITIES
 # ============================================================================
 
-def get_postgres_llm():
-    """Get the configured LLM instance with PostgreSQL tools bound."""
+def get_mysql_llm():
     llm = ChatOpenAI(
         model="gpt-4o-mini",
         temperature=0,
         api_key=os.getenv("OPENAI_API_KEY"),
         max_retries=3,
     )
-    return llm.bind_tools(postgres_tools)
+    return llm.bind_tools(mysql_tools)
 
 
 def invoke_llm_with_retry(llm, messages, max_retries=3):
-    """Invoke LLM with exponential backoff retry for rate limits."""
     for attempt in range(max_retries):
         try:
             return llm.invoke(messages)
@@ -237,11 +236,10 @@ def invoke_llm_with_retry(llm, messages, max_retries=3):
 
 
 # ============================================================================
-# AGENT STATE (shared with main agent)
+# AGENT STATE
 # ============================================================================
 
-class PostgresAgentState(TypedDict):
-    """The state of the PostgreSQL agent."""
+class MySQLAgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     database_selected: bool
     database_type: Optional[str]
@@ -249,40 +247,38 @@ class PostgresAgentState(TypedDict):
 
 
 # ============================================================================
-# POSTGRESQL AGENT NODE
+# MYSQL AGENT NODE
 # ============================================================================
 
-def postgres_agent(state: PostgresAgentState) -> PostgresAgentState:
-    """SQL agent that handles PostgreSQL and MySQL database queries."""
-    db_manager = get_db_manager()
-    llm = get_postgres_llm()
+def mysql_agent(state: MySQLAgentState) -> MySQLAgentState:
+    """MySQL agent that handles MySQL-specific database queries."""
+    llm = get_mysql_llm()
     messages = state["messages"]
-    
-    # Build system prompt scoped to this specific connection
-    db_type = state.get("database_type", "postgres")
+
     conn_name = state.get("connection_name")
-    
+
     if conn_name:
         system_prompt = (
-            f"You are a database assistant connected ONLY to the '{conn_name}' {db_type.upper()} database.\n"
-            f"You must ONLY answer questions about this specific connection. "
-            f"Do NOT mention, suggest, or discuss any other database connections or types.\n\n"
-            + POSTGRES_SYSTEM_PROMPT
+            f"You are a MySQL database assistant connected ONLY to the '{conn_name}' MySQL database.\n"
+            f"You must ONLY answer questions about this specific MySQL connection. "
+            f"Do NOT mention, suggest, or discuss any other database connections or types "
+            f"(no PostgreSQL, no MongoDB — MySQL only).\n\n"
+            + MYSQL_SYSTEM_PROMPT
         )
     else:
+        db_manager = get_db_manager()
         active = db_manager.active_connection
-        system_prompt = POSTGRES_SYSTEM_PROMPT + f"\n\nActive database: {active} (type: {db_type})"
-    
-    # Prepare messages
+        system_prompt = MYSQL_SYSTEM_PROMPT + f"\n\nActive MySQL database: {active}"
+
     non_system_messages = [m for m in messages if not isinstance(m, SystemMessage)]
     messages_with_system = [SystemMessage(content=system_prompt)] + non_system_messages
-    
+
     response = invoke_llm_with_retry(llm, messages_with_system)
-    
+
     return {
         "messages": [response],
         "database_selected": state.get("database_selected", True),
-        "database_type": db_type
+        "database_type": "mysql",
     }
 
 
@@ -290,17 +286,16 @@ def postgres_agent(state: PostgresAgentState) -> PostgresAgentState:
 # TOOL NODE
 # ============================================================================
 
-def create_postgres_tools_node():
-    """Create tools node for the PostgreSQL agent."""
-    base_tool_node = ToolNode(postgres_tools)
-    
-    def tools_with_state(state: PostgresAgentState) -> PostgresAgentState:
+def create_mysql_tools_node():
+    base_tool_node = ToolNode(mysql_tools)
+
+    def tools_with_state(state: MySQLAgentState) -> MySQLAgentState:
         result = base_tool_node.invoke(state)
         result["database_selected"] = True
-        result["database_type"] = state.get("database_type", "postgres")
+        result["database_type"] = "mysql"
         result["connection_name"] = state.get("connection_name")
         return result
-    
+
     return tools_with_state
 
 
@@ -308,12 +303,11 @@ def create_postgres_tools_node():
 # ROUTING LOGIC
 # ============================================================================
 
-def route_after_postgres(state: PostgresAgentState) -> Literal["postgres_tools", "end"]:
-    """Determine next step after PostgreSQL agent."""
+def route_after_mysql(state: MySQLAgentState) -> Literal["mysql_tools", "end"]:
     messages = state["messages"]
     last_message = messages[-1]
-    
+
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        return "postgres_tools"
-    
+        return "mysql_tools"
+
     return "end"

@@ -175,19 +175,27 @@ class SQLDatabaseConnection(BaseDatabaseConnection):
         except Exception as e:
             return [{"error": _sanitize_error(e)}]
     
+    def _schema_arg(self):
+        """Return the schema argument for SQLAlchemy inspector calls.
+        MySQL does not use a 'public' schema; pass None to use the current database."""
+        if self.config.db_type == DatabaseType.MYSQL:
+            return None
+        return self.config.schema
+
     def get_schema_info(self) -> Dict[str, Any]:
         """Get database schema information."""
         inspector = inspect(self.engine)
+        schema = self._schema_arg()
         schema_info = {
             "tables": {},
             "database": self.config.database,
-            "schema": self.config.schema
+            "schema": schema or self.config.database
         }
         
-        for table_name in inspector.get_table_names(schema=self.config.schema):
-            columns = inspector.get_columns(table_name, schema=self.config.schema)
-            primary_keys = inspector.get_pk_constraint(table_name, schema=self.config.schema)
-            foreign_keys = inspector.get_foreign_keys(table_name, schema=self.config.schema)
+        for table_name in inspector.get_table_names(schema=schema):
+            columns = inspector.get_columns(table_name, schema=schema)
+            primary_keys = inspector.get_pk_constraint(table_name, schema=schema)
+            foreign_keys = inspector.get_foreign_keys(table_name, schema=schema)
             
             schema_info["tables"][table_name] = {
                 "columns": [
@@ -212,7 +220,10 @@ class SQLDatabaseConnection(BaseDatabaseConnection):
     
     def get_table_sample(self, table_name: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get sample rows from a table."""
-        query = f"SELECT * FROM {self.config.schema}.{table_name} LIMIT :limit"
+        if self.config.db_type == DatabaseType.MYSQL:
+            query = f"SELECT * FROM `{table_name}` LIMIT :limit"
+        else:
+            query = f"SELECT * FROM {self.config.schema}.{table_name} LIMIT :limit"
         return self.execute_query(query, {"limit": limit})
     
     def close(self):

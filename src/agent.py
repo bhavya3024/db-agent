@@ -36,6 +36,13 @@ from src.mongodb_agent import (
     route_after_mongodb,
     set_db_manager as set_mongodb_db_manager,
 )
+from src.mysql_agent import (
+    mysql_agent,
+    mysql_tools,
+    create_mysql_tools_node,
+    route_after_mysql,
+    set_db_manager as set_mysql_db_manager,
+)
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +56,7 @@ connection_store = get_connection_store()
 # Share database manager with sub-agents
 set_postgres_db_manager(db_manager)
 set_mongodb_db_manager(db_manager)
+set_mysql_db_manager(db_manager)
 
 
 # ============================================================================
@@ -103,6 +111,7 @@ class AgentState(TypedDict):
     # Connection identification (secure - no credentials passed through API)
     connection_id: Optional[str]  # MongoDB ObjectId of the connection
     user_id: Optional[str]  # User ID for ownership verification
+    connection_name: Optional[str]  # Human-readable name of the active connection
 
 
 # ============================================================================
@@ -178,13 +187,13 @@ def setup_connection_from_store(connection_id: str, user_id: str) -> tuple[bool,
             
             # Map to internal type
             internal_type = "postgres" if db_type_str == "postgresql" else db_type_str
-            return True, internal_type
+            return True, internal_type, connection.get("name", connection_name)
         else:
             print(f"✗ Failed to connect to user database: {connection.get('name')}")
-            return False, None
+            return False, None, None
     except Exception as e:
         print(f"✗ Error setting up user connection: {e}")
-        return False, None
+        return False, None, None
 
 
 # ============================================================================
@@ -208,11 +217,11 @@ Once a database is selected, the appropriate specialized agent (PostgreSQL or Mo
 # When a dynamic connection is provided
 DYNAMIC_CONNECTION_PROMPT = """You are a helpful database assistant connected to a {db_type} database.
 
-You are already connected to the database. You can directly help the user with their queries.
+You are already connected to the user's {db_type} database. Only answer questions about this database.
+Do NOT mention or suggest other database types (PostgreSQL, MongoDB, etc.) — only work with this {db_type} connection.
 
 Available capabilities:
-- Execute SQL queries (for PostgreSQL/MySQL)
-- Browse collections and documents (for MongoDB)
+- Execute SQL queries
 - Explore schema and tables
 - Analyze data
 
@@ -286,13 +295,14 @@ def initialize_connection(state: AgentState) -> AgentState:
     
     if connection_id and user_id:
         # Fetch and setup the connection from the store
-        success, db_type = setup_connection_from_store(connection_id, user_id)
+        success, db_type, conn_name = setup_connection_from_store(connection_id, user_id)
         
         if success:
             return {
                 **state,
                 "database_selected": True,
                 "database_type": db_type,
+                "connection_name": conn_name,
             }
         else:
             # Connection failed, but continue with existing connections
@@ -325,7 +335,17 @@ def router_agent(state: AgentState) -> AgentState:
     # Build system prompt with context
     connections = db_manager.list_connections()
     if connections:
-        db_list = ", ".join(f"{c} [{'MongoDB' if db_manager.get_connection(c).is_nosql() else 'PostgreSQL'}]" for c in connections)
+        def _conn_label(name):
+            conn = db_manager.get_connection(name)
+            if not conn:
+                return "Unknown"
+            if conn.is_nosql():
+                return "MongoDB"
+            db_type = getattr(getattr(conn, 'config', None), 'db_type', None)
+            if db_type and db_type.value == "mysql":
+                return "MySQL"
+            return "PostgreSQL"
+        db_list = ", ".join(f"{c} [{_conn_label(c)}]" for c in connections)
         system_prompt = ROUTER_SYSTEM_PROMPT + f"\n\nAvailable databases: {db_list}"
     else:
         system_prompt = ROUTER_SYSTEM_PROMPT + "\n\nNo database connections are available."
@@ -387,60 +407,57 @@ def create_router_tools_node():
 # ROUTING LOGIC
 # ============================================================================
 
-def route_after_initialize(state: AgentState) -> Literal["router_agent", "postgres_agent", "mongodb_agent"]:
+def route_after_initialize(state: AgentState) -> Literal["router_agent", "postgres_agent", "mysql_agent", "mongodb_agent"]:
     """Determine where to go after connection initialization."""
-    db_connection = state.get("db_connection")
     database_selected = state.get("database_selected", False)
     database_type = state.get("database_type")
-    
-    # If we have a user connection that was successfully set up
-    connection_id = state.get("connection_id")
-    if connection_id and database_selected and database_type:
+
+    if database_selected and database_type:
         if database_type == "postgres":
             return "postgres_agent"
+        elif database_type == "mysql":
+            return "mysql_agent"
         elif database_type == "mongodb":
             return "mongodb_agent"
-    
-    # Otherwise, use the router to handle database selection
+
     return "router_agent"
 
 
-def route_after_router(state: AgentState) -> Literal["router_tools", "postgres_agent", "mongodb_agent", "end"]:
+def route_after_router(state: AgentState) -> Literal["router_tools", "postgres_agent", "mysql_agent", "mongodb_agent", "end"]:
     """Determine next step after the router agent."""
     messages = state["messages"]
     last_message = messages[-1]
-    
-    # If the router wants to use tools (list/switch database)
+
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
         return "router_tools"
-    
-    # Check if database is selected and route to appropriate sub-agent
+
     database_selected = state.get("database_selected", False)
     database_type = state.get("database_type")
-    
+
     if database_selected and database_type:
         if database_type == "postgres":
             return "postgres_agent"
+        elif database_type == "mysql":
+            return "mysql_agent"
         elif database_type == "mongodb":
             return "mongodb_agent"
-    
-    # If no database selected yet, end and wait for user input
+
     return "end"
 
 
-def route_after_router_tools(state: AgentState) -> Literal["router_agent", "postgres_agent", "mongodb_agent"]:
+def route_after_router_tools(state: AgentState) -> Literal["router_agent", "postgres_agent", "mysql_agent", "mongodb_agent"]:
     """Determine next step after router tools execution."""
     database_selected = state.get("database_selected", False)
     database_type = state.get("database_type")
-    
-    # If database is now selected, route to appropriate sub-agent
+
     if database_selected and database_type:
         if database_type == "postgres":
             return "postgres_agent"
+        elif database_type == "mysql":
+            return "mysql_agent"
         elif database_type == "mongodb":
             return "mongodb_agent"
-    
-    # Otherwise, go back to router
+
     return "router_agent"
 
 
@@ -468,6 +485,8 @@ def create_graph():
     workflow.add_node("router_tools", create_router_tools_node())
     workflow.add_node("postgres_agent", postgres_agent)
     workflow.add_node("postgres_tools", create_postgres_tools_node())
+    workflow.add_node("mysql_agent", mysql_agent)
+    workflow.add_node("mysql_tools", create_mysql_tools_node())
     workflow.add_node("mongodb_agent", mongodb_agent)
     workflow.add_node("mongodb_tools", create_mongodb_tools_node())
     
@@ -481,6 +500,7 @@ def create_graph():
         {
             "router_agent": "router_agent",
             "postgres_agent": "postgres_agent",
+            "mysql_agent": "mysql_agent",
             "mongodb_agent": "mongodb_agent",
         }
     )
@@ -492,6 +512,7 @@ def create_graph():
         {
             "router_tools": "router_tools",
             "postgres_agent": "postgres_agent",
+            "mysql_agent": "mysql_agent",
             "mongodb_agent": "mongodb_agent",
             "end": END
         }
@@ -504,6 +525,7 @@ def create_graph():
         {
             "router_agent": "router_agent",
             "postgres_agent": "postgres_agent",
+            "mysql_agent": "mysql_agent",
             "mongodb_agent": "mongodb_agent"
         }
     )
@@ -520,7 +542,18 @@ def create_graph():
     
     # After postgres tools, go back to postgres agent
     workflow.add_edge("postgres_tools", "postgres_agent")
-    
+
+    # MySQL agent routing
+    workflow.add_conditional_edges(
+        "mysql_agent",
+        route_after_mysql,
+        {
+            "mysql_tools": "mysql_tools",
+            "end": END
+        }
+    )
+    workflow.add_edge("mysql_tools", "mysql_agent")
+
     # MongoDB agent routing
     workflow.add_conditional_edges(
         "mongodb_agent",
