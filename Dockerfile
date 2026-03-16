@@ -1,4 +1,4 @@
-FROM langchain/langgraph-api:3.11
+FROM langchain/langgraph-api:latest
 
 # Copy application code into the deps directory
 ADD src /deps/__outer_src/src
